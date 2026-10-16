@@ -26,47 +26,59 @@
 
     <p id="mensaje" style="margin-top: 15px; color: #4CAF50;"></p>
 
-    <script>
-        const dropZone = document.getElementById('dropZone');
-        const txtCodigo = document.getElementById('codigo');
-        const txtUsuario = document.getElementById('usuario');
-        const btnGuardar = document.getElementById('btnGuardar');
-        const mensaje = document.getElementById('mensaje');
+   <script>
+    const dropZone = document.getElementById('dropZone');
+    const txtCodigo = document.getElementById('codigo');
+    const txtUsuario = document.getElementById('usuario');
+    const btnGuardar = document.getElementById('btnGuardar');
+    const mensaje = document.getElementById('mensaje');
 
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2f2wWAl7elQk2Lq0aV_LZ8M6DxIXJpsE6jGbQDSDTJFDcH0yBY3X0qUmhcuN1htJZ/exec"; // Reemplazá con tu URL de Google Apps Script
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => { txtCodigo.value = event.target.result; };
+            reader.readAsText(file);
+        } else {
+            const text = e.dataTransfer.getData('text');
+            txtCodigo.value = text;
+        }
+    });
+
+    btnGuardar.addEventListener('click', async () => {
+        const usuario = txtUsuario.value.trim();
+        const codigo = txtCodigo.value.trim();
         
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => { txtCodigo.value = event.target.result; };
-                reader.readAsText(file);
-            } else {
-                const text = e.dataTransfer.getData('text');
-                txtCodigo.value = text;
-            }
-        });
+        if (!usuario) { alert("Por favor, ingresá tu nombre."); return; }
+        if (!codigo) { alert("Por favor, ingresá o arrastrá algún código."); return; }
 
-        btnGuardar.addEventListener('click', async () => {
-            const usuario = txtUsuario.value;
-            const codigo = txtCodigo.value;
-            if (!codigo) { alert("Poné algún código o enlace."); return; }
+        mensaje.textContent = "Enviando entrega...";
+        btnGuardar.disabled = true;
 
-            const tipo = codigo.startsWith('http') ? 'enlace' : 'codigo';
-
-            const res = await fetch('/guardar', {
+        try {
+            await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
+                mode: 'no-cors', // Necesario para Google Apps Script desde páginas externas
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usuario, codigo, tipo })
+                body: JSON.stringify({ usuario: usuario, codigo: codigo })
             });
-            const data = await res.json();
-            mensaje.textContent = data.mensaje;
+
+            mensaje.textContent = "¡Entrega guardada con éxito!";
             txtCodigo.value = '';
             txtUsuario.value = '';
-        });
-    </script>
+        } catch (error) {
+            mensaje.textContent = "Hubo un error al enviar.";
+            console.error(error);
+        } finally {
+            btnGuardar.disabled = false;
+        }
+    });
+</script>
 </body>
 </html>
