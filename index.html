@@ -79,6 +79,75 @@
             btnGuardar.disabled = false;
         }
     });
+
+    async function cargarEntregas() {
+    try {
+        // Usamos la misma URL de Apps Script pero para que devuelva los datos (función doGet)
+        let respuesta = await fetch(APPS_SCRIPT_URL);
+        let datos = await respuesta.json();
+        
+        let contenedor = document.getElementById("lista-entregas");
+        contenedor.innerHTML = "";
+
+        if (datos.length === 0) {
+            contenedor.innerHTML = "<p style='color: #888;'>No hay entregas todavía.</p>";
+            return;
+        }
+
+       datos.forEach((entrega) => {
+            let tarjeta = document.createElement("div");
+            tarjeta.style.cssText = "background: #1e1e1e; padding: 15px; border-radius: 6px; border: 1px solid #333; margin-bottom: 15px;";
+            
+            // Si mandaron un enlace (ej: p5 editor o codepen), usamos iframe normal. 
+            // Si mandaron código crudo de p5.js, armamos un visor en vivo:
+            let esEnlace = entrega.codigo.startsWith("http");
+            
+            let contenidoVisual = "";
+            if (esEnlace) {
+                contenidoVisual = `<a href="${entrega.codigo}" target="_blank" style="color: #4CAF50;">Abrir enlace ↗</a>`;
+            } else {
+                // Creamos un HTML embebido seguro que carga p5.js y ejecuta el código del alumno en tiempo real
+                let htmlContenido = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+                    </head>
+                    <body style="margin:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh;">
+                        <script>${entrega.codigo}<\/script>
+                    </body>
+                    </html>
+                `;
+                let encodedHtml = encodeURIComponent(htmlContenido);
+                contenidoVisual = `<iframe src="data:text/html;charset=utf-8,${encodedHtml}" style="width:100%; height:200px; border:none; border-radius:4px; background:#000;"></iframe>`;
+            }
+
+            tarjeta.innerHTML = `
+                <strong style="color: #fff; font-size: 16px;">Alumno/a: ${escapeHtml(entrega.nombre)}</strong>
+                <span style="font-size: 12px; color: #888; float: right;">${entrega.fecha || ''}</span>
+                <div style="margin-top: 10px;">${contenidoVisual}</div>
+            `;
+            contenedor.appendChild(tarjeta);
+        });
+    } catch (error) {
+        console.error("Error al cargar entregas:", error);
+    }
+}
+
+// Función auxiliar para seguridad de texto
+function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Ejecutar al cargar la página
+cargarEntregas();
+
 </script>
 </body>
+<div style="margin-top: 40px; border-top: 1px solid #333; padding-top: 20px;">
+    <h3>Entregas de los alumnos</h3>
+    <div id="lista-entregas" style="display: flex; flex-direction: column; gap: 10px;">
+        <p style="color: #888;">Cargando entregas...</p>
+    </div>
+</div>
 </html>
